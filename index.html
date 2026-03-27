@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MatTrack — Material Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Sidebar Overlay (mobile) -->
+<div class="overlay-bg" id="overlayBg" onclick="closeMobileSidebar()"></div>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon">M</div>
+      <div>
+        <div class="logo-text">MatTrack</div>
+        <div class="logo-sub">Material Tracker v1.0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Main</div>
+    <button class="nav-item active" onclick="switchView('dashboard', this)">
+      <span class="nav-icon">⬛</span> Dashboard
+    </button>
+    <button class="nav-item" onclick="switchView('materials', this)">
+      <span class="nav-icon">📦</span> Materials
+    </button>
+    <button class="nav-item" onclick="switchView('report', this)">
+      <span class="nav-icon">📊</span> Reports
+    </button>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Categories</div>
+    <button class="nav-item" onclick="switchView('materials', this); setFilter('HVAC')">
+      <span class="nav-icon" style="color:var(--hvac)">●</span> HVAC
+    </button>
+    <button class="nav-item" onclick="switchView('materials', this); setFilter('Civil')">
+      <span class="nav-icon" style="color:var(--civil)">●</span> Civil
+    </button>
+    <button class="nav-item" onclick="switchView('materials', this); setFilter('Electrical')">
+      <span class="nav-icon" style="color:var(--electrical)">●</span> Electrical
+    </button>
+    <button class="nav-item" onclick="switchView('materials', this); setFilter('IBMS')">
+      <span class="nav-icon" style="color:var(--ibms)">●</span> IBMS
+    </button>
+  </div>
+
+  <div class="sidebar-bottom">
+    <button class="nav-item" onclick="signOut()" style="margin-bottom: 12px;">
+      <span class="nav-icon">🚪</span> Logout
+    </button>
+    <button class="theme-toggle" onclick="toggleTheme()">
+      <span id="themeLabel">🌙 Dark Mode</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </button>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<div class="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="btn-icon mobile-menu" onclick="openMobileSidebar()">☰</button>
+      <div>
+        <div class="page-title" id="pageTitle">Dashboard</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" placeholder="Search materials…" id="searchInput" oninput="onSearch()">
+      </div>
+      <button class="btn btn-primary" onclick="openAddMaterial()">
+        ＋ Add Item
+      </button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ======= DASHBOARD VIEW ======= -->
+    <div class="view active" id="view-dashboard">
+      <div class="section-header" style="margin-bottom:24px">
+        <div>
+          <div class="section-title">Overview</div>
+          <div class="section-sub">Real-time material tracking across all categories</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="refreshDashboard()">↻ Refresh</button>
+      </div>
+
+      <!-- Summary Stats -->
+      <div class="stats-grid" id="summaryStats"></div>
+
+      <!-- Category Breakdown Table -->
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title" style="font-size:.95rem">Category Breakdown</div>
+      </div>
+      <div class="table-card" style="margin-bottom:28px">
+        <div class="table-scroll">
+          <table id="summaryTable">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Items</th>
+                <th>Required (total)</th>
+                <th>Received</th>
+                <th>Balance</th>
+                <th>Progress</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Shortage Alerts -->
+      <div id="shortageSection">
+        <div class="section-header">
+          <div class="section-title" style="font-size:.95rem">⚠️ Shortage Alerts</div>
+        </div>
+        <div class="table-card">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Category</th>
+                  <th>Required</th>
+                  <th>Received</th>
+                  <th>Shortage</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="shortageTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======= MATERIALS VIEW ======= -->
+    <div class="view" id="view-materials">
+      <div class="section-header">
+        <div>
+          <div class="section-title">All Materials</div>
+          <div class="section-sub" id="materialCount">Loading…</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn btn-secondary btn-sm" onclick="openUploadModal()">⬆ Import CSV</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddMaterial()">＋ Add Item</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar" id="filterBar">
+        <button class="filter-btn active" data-filter="All" onclick="setFilter('All', this)">
+          All
+        </button>
+        <button class="filter-btn" data-filter="HVAC" onclick="setFilter('HVAC', this)">
+          <span class="filter-dot" style="background:var(--hvac)"></span> HVAC
+        </button>
+        <button class="filter-btn" data-filter="Civil" onclick="setFilter('Civil', this)">
+          <span class="filter-dot" style="background:var(--civil)"></span> Civil
+        </button>
+        <button class="filter-btn" data-filter="Electrical" onclick="setFilter('Electrical', this)">
+          <span class="filter-dot" style="background:var(--electrical)"></span> Electrical
+        </button>
+        <button class="filter-btn" data-filter="IBMS" onclick="setFilter('IBMS', this)">
+          <span class="filter-dot" style="background:var(--ibms)"></span> IBMS
+        </button>
+      </div>
+
+      <div class="materials-grid" id="materialsGrid"></div>
+    </div>
+
+    <!-- ======= REPORT VIEW ======= -->
+    <div class="view" id="view-report">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Reports</div>
+          <div class="section-sub">Export and print material status reports</div>
+        </div>
+      </div>
+      <div class="report-controls no-print">
+        <button class="btn btn-secondary" onclick="window.print()">🖨 Print Report</button>
+        <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-secondary" onclick="exportDetailCSV()">⬇ Lot Detail CSV</button>
+      </div>
+
+      <div id="reportContent"></div>
+    </div>
+
+  </div><!-- /content -->
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ======= MODAL: Add/Edit Material ======= -->
+<div class="modal-overlay" id="modalMaterial">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalMaterialTitle">Add Material</div>
+      <button class="modal-close" onclick="closeModal('modalMaterial')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category *</label>
+          <select class="form-select" id="fCategory">
+            <option value="">Select category…</option>
+            <option value="HVAC">HVAC</option>
+            <option value="Civil">Civil</option>
+            <option value="Electrical">Electrical</option>
+            <option value="IBMS">IBMS</option>
+          </select>
+          <div class="form-error" id="errCategory">Please select a category</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit *</label>
+          <input type="text" class="form-input" id="fUnit" placeholder="e.g. Nos, kg, m, sets">
+          <div class="form-error" id="errUnit">Please enter a unit</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description *</label>
+        <input type="text" class="form-input" id="fDescription" placeholder="Material or activity description…">
+        <div class="form-error" id="errDescription">Please enter a description</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Required Quantity *</label>
+        <input type="number" class="form-input" id="fRequired" placeholder="0" min="0" step="any">
+        <div class="form-error" id="errRequired">Please enter a valid quantity</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Remarks</label>
+        <textarea class="form-textarea" id="fRemarks" placeholder="Optional notes…" rows="2"></textarea>
+      </div>
+      <input type="hidden" id="fMaterialId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalMaterial')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMaterial()">Save Material</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: Add Lot ======= -->
+<div class="modal-overlay" id="modalLot">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalLotTitle">Add Delivery Lot</div>
+      <button class="modal-close" onclick="closeModal('modalLot')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="lotMaterialInfo" style="padding:12px;background:var(--bg-input);border-radius:var(--radius-sm);margin-bottom:16px;font-size:.84rem;"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Received Qty *</label>
+          <input type="number" class="form-input" id="fLotQty" placeholder="0" min="0" step="any">
+          <div class="form-error" id="errLotQty">Enter a valid quantity</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Delivery Date *</label>
+          <input type="date" class="form-input" id="fLotDate">
+          <div class="form-error" id="errLotDate">Select a date</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Delivery Note / Remarks</label>
+        <textarea class="form-textarea" id="fLotRemarks" placeholder="e.g. DC No., supplier, condition…" rows="2"></textarea>
+      </div>
+      <input type="hidden" id="fLotMaterialId">
+      <input type="hidden" id="fLotId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalLot')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLot()">Save Lot</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: View Lots ======= -->
+<div class="modal-overlay" id="modalViewLots">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="viewLotsTitle">Delivery Lots</div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px" id="viewLotsSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalViewLots')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="lotDetailList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="addLotFromView()">＋ Add Lot</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: CSV Upload ======= -->
+<div class="modal-overlay" id="modalUpload">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Import BOQ from CSV</div>
+      <button class="modal-close" onclick="closeModal('modalUpload')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFileInput').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text">Click or drag CSV file here</div>
+        <div class="upload-sub">Format: Category, Description, Unit, Required Qty</div>
+      </div>
+      <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="handleCSVFile(event)">
+      <div id="csvPreview"></div>
+      <div style="background:var(--bg-input);padding:14px;border-radius:var(--radius-sm);font-size:.78rem;color:var(--text-secondary)">
+        <strong>Expected columns:</strong><br>
+        <code style="font-family:var(--font-mono)">Category, Description, Unit, Required Qty, Remarks</code><br>
+        Category must be one of: HVAC, Civil, Electrical, IBMS
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalUpload')">Cancel</button>
+      <button class="btn btn-primary" id="importBtn" onclick="importCSV()" disabled>Import Items</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= MODAL: Login ======= -->
+<div class="modal-overlay" id="modalLogin">
+  <div class="modal" style="max-width: 400px;">
+    <div class="modal-header">
+      <div class="modal-title">Login / Sign Up</div>
+      <button class="modal-close" onclick="closeModal('modalLogin')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="loginEmail" class="form-input" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="loginPassword" class="form-input" placeholder="••••••••">
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content: space-between;">
+      <button class="btn btn-secondary" onclick="signUp(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value)">Sign Up</button>
+      <button class="btn btn-primary" onclick="login(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value)">Login</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+</body>
+</html>
